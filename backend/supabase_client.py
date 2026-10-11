@@ -9,8 +9,17 @@ import logging
 from typing import Optional, Tuple
 from dotenv import load_dotenv
 
-# Ensure environment variables are loaded from .env
-load_dotenv()
+# Ensure environment variables are loaded from backend/.env or root .env
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(_BASE_DIR)
+_backend_env = os.path.join(_BASE_DIR, ".env")
+_root_env = os.path.join(_PROJECT_ROOT, ".env")
+if os.path.isfile(_backend_env):
+    load_dotenv(_backend_env)
+elif os.path.isfile(_root_env):
+    load_dotenv(_root_env)
+else:
+    load_dotenv()
 
 logger = logging.getLogger("infoshield.supabase_client")
 

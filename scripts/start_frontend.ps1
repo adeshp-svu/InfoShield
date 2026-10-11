@@ -5,8 +5,9 @@ param(
 # InfoShield - Start Frontend Web Server
 # Serves static frontend on http://127.0.0.1:$Port
 
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$FrontendDir = Join-Path (Split-Path -Parent $ScriptDir) "frontend"
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$ProjectRoot = Split-Path -Parent $ScriptDir
+$FrontendDir = Join-Path $ProjectRoot "frontend"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host " Starting InfoShield Frontend HTTP Server" -ForegroundColor Cyan

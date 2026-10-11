@@ -68,7 +68,7 @@ InfoShield/
 
 1. **Clone or navigate to the project root**:
    ```powershell
-   cd C:\Users\ADESH\.gemini\antigravity\scratch\InfoShield
+   cd path\to\InfoShield  # e.g., cd C:\Users\YourUser\Downloads\InfoShield
    ```
 
 2. **Set up Python Virtual Environment**:

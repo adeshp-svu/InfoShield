@@ -27,10 +27,40 @@ if sys.platform == "win32":
         pass
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_DIR = os.path.join(BASE_DIR, "ml_models")
-MODEL_PATH = os.path.join(MODEL_DIR, "pii_risk_model.joblib")
-META_PATH = os.path.join(MODEL_DIR, "model_metadata.json")
-SENSITIVITY_PATH = os.path.join(BASE_DIR, "data", "pii_sensitivity.json")
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+_env_model_dir = os.getenv("RISK_MODEL_DIR")
+if not _env_model_dir:
+    MODEL_DIR = os.path.join(BASE_DIR, "ml_models")
+elif not os.path.isabs(_env_model_dir):
+    MODEL_DIR = os.path.join(BASE_DIR, _env_model_dir)
+else:
+    MODEL_DIR = _env_model_dir
+
+_env_model_path = os.getenv("RISK_MODEL_PATH")
+if not _env_model_path:
+    MODEL_PATH = os.path.join(MODEL_DIR, "pii_risk_model.joblib")
+elif not os.path.isabs(_env_model_path):
+    MODEL_PATH = os.path.join(BASE_DIR, _env_model_path)
+else:
+    MODEL_PATH = _env_model_path
+
+_env_meta_path = os.getenv("RISK_MODEL_META_PATH")
+if not _env_meta_path:
+    META_PATH = os.path.join(MODEL_DIR, "model_metadata.json")
+elif not os.path.isabs(_env_meta_path):
+    META_PATH = os.path.join(BASE_DIR, _env_meta_path)
+else:
+    META_PATH = _env_meta_path
+
+_env_sens_path = os.getenv("PII_SENSITIVITY_PATH")
+if not _env_sens_path:
+    SENSITIVITY_PATH = os.path.join(BASE_DIR, "data", "pii_sensitivity.json")
+elif not os.path.isabs(_env_sens_path):
+    SENSITIVITY_PATH = os.path.join(BASE_DIR, _env_sens_path)
+else:
+    SENSITIVITY_PATH = _env_sens_path
 
 # Default baseline domain context risks
 DOMAIN_CONTEXT_RISKS = {

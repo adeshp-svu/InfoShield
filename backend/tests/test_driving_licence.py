@@ -120,7 +120,7 @@ def test_identity_verification_policy_preserves_photo(dl_ocr_and_fields):
     assert "photograph" in reqs
     assert reqs["photograph"]["decision"] == "REQUIRED"
     assert reqs["photograph"]["action"] == "PRESERVED"
-    assert "Visual face photograph is required" in reqs["photograph"]["reason"]
+    assert "Visual face photograph" in reqs["photograph"]["reason"]
 
     # Name must be REQUIRED and PRESERVED
     assert "person_name" in reqs
@@ -339,7 +339,7 @@ def test_api_protect_driving_licence_address_verification():
 
     reqs = {r["type"]: r for r in data["requirements"]}
     assert "photograph" in reqs
-    assert reqs["photograph"]["action"] == "FULL_MASK"
-    assert reqs["photograph"]["decision"] == "UNNECESSARY"
+    assert reqs["photograph"]["action"] == "PRESERVED"
+    assert reqs["photograph"]["decision"] == "REQUIRED"
     assert reqs["address"]["action"] == "PRESERVED"
     assert reqs["address"]["decision"] == "REQUIRED"

@@ -58,18 +58,61 @@ class OCREngine:
 
     @classmethod
     def _resolve_tesseract_binary(cls) -> Optional[str]:
-        """Discovers the Tesseract binary by checking PATH and standard locations."""
+        """Discovers the Tesseract binary by checking PATH, dynamic OS paths, and local project directories."""
         # 1. Environment variable (check TESSERACT_PATH or TESSERACT_CMD)
         env_cmd = os.environ.get("TESSERACT_PATH") or os.environ.get("TESSERACT_CMD")
-        if env_cmd and os.path.isfile(env_cmd):
-            return env_cmd
+        if env_cmd:
+            if not os.path.isabs(env_cmd):
+                # Resolve relative to backend or current working directory
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                candidate = os.path.abspath(os.path.join(base_dir, env_cmd))
+                if os.path.isfile(candidate):
+                    return candidate
+            if os.path.isfile(env_cmd):
+                return env_cmd
 
         # 2. System PATH
         which_cmd = shutil.which("tesseract")
         if which_cmd and os.path.isfile(which_cmd):
             return which_cmd
 
-        # 3. Standard OS installation paths
+        # 3. Dynamic Windows environment and drive locations
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(base_dir)
+        sys_drive = os.environ.get("SystemDrive", "C:")
+
+        dynamic_candidates = [
+            # Check relative portable / vendored tesseract in project or backend
+            os.path.join(base_dir, "tesseract", "tesseract.exe"),
+            os.path.join(project_root, "tesseract", "tesseract.exe"),
+            os.path.join(base_dir, "Tesseract-OCR", "tesseract.exe"),
+            os.path.join(project_root, "Tesseract-OCR", "tesseract.exe"),
+        ]
+
+        for env_key in ["ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"]:
+            pf_dir = os.environ.get(env_key)
+            if pf_dir:
+                dynamic_candidates.append(os.path.join(pf_dir, "Tesseract-OCR", "tesseract.exe"))
+
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data:
+            dynamic_candidates.append(os.path.join(local_app_data, "Programs", "Tesseract-OCR", "tesseract.exe"))
+
+        user_profile = os.environ.get("USERPROFILE")
+        if user_profile:
+            dynamic_candidates.append(os.path.join(user_profile, "AppData", "Local", "Programs", "Tesseract-OCR", "tesseract.exe"))
+
+        # Also support arbitrary Windows system drives (e.g. D:\Program Files\Tesseract-OCR\...)
+        dynamic_candidates.extend([
+            os.path.join(f"{sys_drive}\\", "Program Files", "Tesseract-OCR", "tesseract.exe"),
+            os.path.join(f"{sys_drive}\\", "Program Files (x86)", "Tesseract-OCR", "tesseract.exe"),
+        ])
+
+        for cand in dynamic_candidates:
+            if cand and os.path.isfile(cand):
+                return cand
+
+        # 4. Standard OS installation paths fallback
         for path in cls.KNOWN_TESSERACT_PATHS:
             if os.path.isfile(path):
                 return path

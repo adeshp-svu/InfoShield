@@ -1,8 +1,9 @@
 # InfoShield - Start Backend Server
 # Starts FastAPI server on http://127.0.0.1:8000 with auto-reload
 
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$BackendDir = Join-Path (Split-Path -Parent $ScriptDir) "backend"
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$ProjectRoot = Split-Path -Parent $ScriptDir
+$BackendDir = Join-Path $ProjectRoot "backend"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host " Starting InfoShield FastAPI Backend Server" -ForegroundColor Cyan

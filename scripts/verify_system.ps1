@@ -1,3 +1,7 @@
+param(
+    [int]$FrontendPort = 5500
+)
+
 # InfoShield - Automated System Verification Script
 # Verifies Backend, Database, Frontend, AI/ML Pipeline, and Protection End-to-End
 
@@ -40,16 +44,25 @@ try {
 
 # 3. Frontend HTTP Check
 try {
-    $res = Invoke-WebRequest -Uri "http://127.0.0.1:3000" -Method Get -UseBasicParsing -TimeoutSec 30
+    $res = Invoke-WebRequest -Uri "http://127.0.0.1:$FrontendPort" -Method Get -UseBasicParsing -TimeoutSec 30
     $ok = ($res.StatusCode -eq 200 -and $res.Content -like "*InfoShield*")
-    Report-Check "Frontend HTTP Server (port 3000)" $ok "HTTP $($res.StatusCode) OK, InfoShield UI rendered"
+    Report-Check "Frontend HTTP Server (port $FrontendPort)" $ok "HTTP $($res.StatusCode) OK, InfoShield UI rendered"
 } catch {
-    Report-Check "Frontend HTTP Server (port 3000)" $false $_.Exception.Message
+    # Fallback check on port 3000
+    try {
+        $res = Invoke-WebRequest -Uri "http://127.0.0.1:3000" -Method Get -UseBasicParsing -TimeoutSec 10
+        $ok = ($res.StatusCode -eq 200 -and $res.Content -like "*InfoShield*")
+        Report-Check "Frontend HTTP Server (port 3000)" $ok "HTTP $($res.StatusCode) OK, InfoShield UI rendered"
+    } catch {
+        Report-Check "Frontend HTTP Server (port $FrontendPort)" $false $_.Exception.Message
+    }
 }
 
 # 4. Live /api/protect Integration Check
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$TestImage = Join-Path (Join-Path (Split-Path -Parent $ScriptDir) "backend") "test_images\test_document.png"
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$ProjectRoot = Split-Path -Parent $ScriptDir
+$BackendDir = Join-Path $ProjectRoot "backend"
+$TestImage = Join-Path $BackendDir "test_images\test_document.png"
 
 if (Test-Path $TestImage) {
     try {

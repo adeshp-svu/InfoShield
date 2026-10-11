@@ -18,8 +18,22 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-# Load environment configuration (.env)
-load_dotenv()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
+
+# Ensure backend directory is in sys.path so modules resolve anywhere
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+# Load environment configuration (.env) from backend/ or project root
+backend_env = os.path.join(BASE_DIR, ".env")
+root_env = os.path.join(PROJECT_ROOT, ".env")
+if os.path.isfile(backend_env):
+    load_dotenv(backend_env)
+elif os.path.isfile(root_env):
+    load_dotenv(root_env)
+else:
+    load_dotenv()
 
 # Ensure UTF-8 stdout encoding on Windows
 if sys.platform == "win32":
@@ -39,9 +53,23 @@ from purpose_ai import get_purpose_ai
 from risk_model import get_risk_model
 from supabase_service import get_db_service
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.join(BASE_DIR, "uploads"))
-OUTPUT_DIR = os.getenv("OUTPUT_DIR", os.path.join(BASE_DIR, "outputs"))
+# Resolve file storage directories relative to backend if not absolute
+_env_upload = os.getenv("UPLOAD_DIR")
+if not _env_upload:
+    UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+elif not os.path.isabs(_env_upload):
+    UPLOAD_DIR = os.path.join(BASE_DIR, _env_upload)
+else:
+    UPLOAD_DIR = _env_upload
+
+_env_output = os.getenv("OUTPUT_DIR")
+if not _env_output:
+    OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+elif not os.path.isabs(_env_output):
+    OUTPUT_DIR = os.path.join(BASE_DIR, _env_output)
+else:
+    OUTPUT_DIR = _env_output
+
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -913,15 +941,16 @@ async def get_protected_file_endpoint(filename: str):
     """
     safe_name = os.path.basename(filename)
 
-    # Access control: only permit accessing legitimate protected files
-    if not safe_name.startswith("protected_") or ".." in filename or "/" in filename or "\\" in filename:
+    # Path traversal protection
+    if ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid document identifier."
         )
 
+    # Access control & file existence: only serve legitimate existing protected files
     file_path = os.path.join(OUTPUT_DIR, safe_name)
-    if not os.path.isfile(file_path):
+    if not safe_name.startswith("protected_") or not os.path.isfile(file_path):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Protected document '{safe_name}' not found."

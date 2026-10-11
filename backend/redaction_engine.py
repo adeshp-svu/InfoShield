@@ -20,7 +20,12 @@ class RedactionEngine:
     """
 
     def __init__(self, output_dir: Optional[str] = None):
-        self.output_dir = output_dir or os.path.join(os.path.dirname(os.path.abspath(__file__)), "outputs")
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        target = output_dir or os.getenv("OUTPUT_DIR", os.path.join(base_dir, "outputs"))
+        if not os.path.isabs(target):
+            self.output_dir = os.path.join(base_dir, target)
+        else:
+            self.output_dir = target
         os.makedirs(self.output_dir, exist_ok=True)
 
     @staticmethod
