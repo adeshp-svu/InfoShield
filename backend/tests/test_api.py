@@ -23,6 +23,8 @@ if sys.platform == "win32":
     except Exception:
         pass
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from api import app
 
 client = TestClient(app)
@@ -115,9 +117,74 @@ def test_scan_endpoint():
     print("\n✓ ALL REQUIRED FIELDS DETECTED FROM REAL OCR PASS!")
 
 
+def test_cors_preflight_endpoints():
+    print("=" * 60)
+    print("TEST 3: CORS OPTIONS Preflight Verification")
+    print("=" * 60)
+
+    test_origins = [
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+        "http://127.0.0.1:3000",
+        "http://localhost:3000"
+    ]
+
+    for origin in test_origins:
+        # Preflight on /api/protect
+        response = client.options(
+            "/api/protect",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "Content-Type",
+            }
+        )
+        assert response.status_code == 200, f"Expected 200 for preflight from {origin}, got {response.status_code}"
+        assert response.headers.get("access-control-allow-origin") == origin, f"Origin {origin} not allowed in preflight"
+        assert response.headers.get("access-control-allow-credentials") == "true", "Credentials not allowed"
+        allow_methods = response.headers.get("access-control-allow-methods", "")
+        assert "POST" in allow_methods or "*" in allow_methods, f"POST method not allowed in preflight: {allow_methods}"
+        print(f"✓ CORS preflight allowed for {origin}")
+
+    print("✓ All CORS preflight checks PASSED!\n")
+
+
+def test_protect_with_cors_headers():
+    print("=" * 60)
+    print("TEST 4: POST /api/protect from http://127.0.0.1:5500")
+    print("=" * 60)
+
+    if not os.path.exists(TEST_IMAGE_PATH):
+        print(f"[ERROR] Test image not found at {TEST_IMAGE_PATH}")
+        sys.exit(1)
+
+    origin = "http://127.0.0.1:5500"
+    with open(TEST_IMAGE_PATH, "rb") as f:
+        response = client.post(
+            "/api/protect",
+            data={"purpose": "Identity verification for college admission"},
+            files={"file": ("test_document.png", f, "image/png")},
+            headers={"Origin": origin}
+        )
+
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+    assert response.headers.get("access-control-allow-origin") == origin, f"CORS header missing in POST response for {origin}"
+    
+    data = response.json()
+    assert data.get("success") is True
+    assert "document" in data
+    assert "protected_url" in data["document"]
+    assert "requirements" in data
+    print(f"✓ Protected document generated: {data['document']['protected_filename']}")
+    print(f"✓ CORS origin preserved in response: {response.headers.get('access-control-allow-origin')}")
+    print("✓ Document analysis and protection flow PASSED with CORS!\n")
+
+
 if __name__ == "__main__":
     try:
         test_health_endpoint()
+        test_cors_preflight_endpoints()
+        test_protect_with_cors_headers()
         test_scan_endpoint()
         print("\n" + "=" * 60)
         print("ALL TESTS PASSED SUCCESSFULLY!")

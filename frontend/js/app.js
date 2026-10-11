@@ -22,21 +22,21 @@
       }
     } catch (_) {}
 
-    // 2. LocalStorage override (persisted across sessions per client device)
-    try {
-      const stored = localStorage.getItem('infoshield_backend_url');
-      if (stored && stored.trim()) {
-        return stored.trim().replace(/\/+$/, '');
-      }
-    } catch (_) {}
-
-    // 3. Runtime configuration object from config.js
+    // 2. Runtime configuration object from config.js (highest authority for configured deployment)
     if (window.INFOSHIELD_CONFIG && typeof window.INFOSHIELD_CONFIG.BACKEND_URL === 'string') {
       const cfgUrl = window.INFOSHIELD_CONFIG.BACKEND_URL.trim();
       if (cfgUrl) {
         return cfgUrl.replace(/\/+$/, '');
       }
     }
+
+    // 3. LocalStorage override (fallback if config.js has no explicit URL)
+    try {
+      const stored = localStorage.getItem('infoshield_backend_url');
+      if (stored && stored.trim()) {
+        return stored.trim().replace(/\/+$/, '');
+      }
+    } catch (_) {}
 
     // 4. Default to localhost if accessed on local development host
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -911,7 +911,13 @@
       navigateTo('screen-required');
 
     } catch (err) {
-      showToast(`Error: ${err.message || 'Cannot reach backend at ' + BACKEND_BASE_URL}`);
+      console.error('[InfoShield] Pipeline error:', err);
+      let errorMsg = err.message || 'Unknown network error';
+      if (errorMsg === 'Failed to fetch' || errorMsg.includes('NetworkError')) {
+        const targetUrl = getBackendBaseUrl();
+        errorMsg = `Cannot connect to backend (${targetUrl}). Please ensure the FastAPI server is running on port 8000 and CORS allows ${window.location.origin}.`;
+      }
+      showToast(`Error: ${errorMsg}`, 6000);
       navigateTo('screen-purpose');
     } finally {
       state.isProcessing = false;

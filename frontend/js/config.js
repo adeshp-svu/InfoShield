@@ -12,5 +12,6 @@
 window.INFOSHIELD_CONFIG = {
   // Set your hosted Render backend URL here once deployed:
   // e.g. "https://infoshield-backend.onrender.com"
-  BACKEND_URL: ""
+      BACKEND_URL: "http://127.0.0.1:8000"
+
 };

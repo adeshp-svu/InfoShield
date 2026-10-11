@@ -16,6 +16,10 @@ from pydantic import BaseModel, Field
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, status
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+
+# Load environment configuration (.env)
+load_dotenv()
 
 # Ensure UTF-8 stdout encoding on Windows
 if sys.platform == "win32":
@@ -107,35 +111,48 @@ app = FastAPI(
 )
 
 # ------------------------------------------------------------------------------
-# Production CORS Configuration
+# Robust CORS Configuration (Local Laptop Dev + Cloud Hosting)
 # ------------------------------------------------------------------------------
-raw_origins = os.getenv("ALLOWED_ORIGINS", "").strip()
-allowed_origins = [orig.strip() for orig in raw_origins.split(",") if orig.strip()]
+# Local development origins (always enabled so local laptop testing never fails)
+LOCAL_DEV_ORIGINS = [
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8080",
+    "http://localhost:8080",
+]
 
-if not allowed_origins:
-    allowed_origins = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ]
+# Additional configured origins from environment (.env or cloud settings)
+raw_origins = os.getenv("ALLOWED_ORIGINS", "").strip()
+env_origins = [orig.strip() for orig in raw_origins.split(",") if orig.strip()]
+
+# Combine local dev origins and environment origins (deduplicated, preserving order)
+allowed_origins = list(dict.fromkeys(LOCAL_DEV_ORIGINS + env_origins))
 
 frontend_url = os.getenv("FRONTEND_URL", "").strip()
 if frontend_url and frontend_url not in allowed_origins:
     allowed_origins.append(frontend_url)
 
-cors_regex = os.getenv("ALLOWED_ORIGIN_REGEX", r"^https:\/\/.*\.vercel\.app$")
-is_dev = os.getenv("ENV", "development").lower() == "development"
+# Support any port on localhost / 127.0.0.1, plus Vercel preview domains
+cors_regex = os.getenv(
+    "ALLOWED_ORIGIN_REGEX",
+    r"^(https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?|https:\/\/.*\.vercel\.app)$"
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins if not (is_dev and "*" in allowed_origins) else ["*"],
-    allow_origin_regex=cors_regex if not is_dev else None,
+    allow_origins=allowed_origins,
+    allow_origin_regex=cors_regex,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=600,
 )
 
 @app.on_event("startup")
